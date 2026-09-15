@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+VERSION_FILTER="${1:-}"
+
+"${SCRIPT_DIR}/list-all" \
+  | awk -v filter="${VERSION_FILTER}" 'filter == "" || index($0, filter) == 1' \
+  | tail -n 1
