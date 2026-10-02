@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+
+INSTALL_TYPE="${ASDF_INSTALL_TYPE:-${1:-version}}"
+VERSION="${ASDF_INSTALL_VERSION:-${2:-}}"
+DOWNLOAD_PATH="${ASDF_DOWNLOAD_PATH:-${3:-}}"
+INSTALL_PATH="${ASDF_INSTALL_PATH:-${4:-}}"
+
+[ -n "${VERSION}" ] || { echo "Missing version for asdf install" >&2; exit 1; }
+[ -n "${DOWNLOAD_PATH}" ] || { echo "Missing download path for asdf install" >&2; exit 1; }
+[ -n "${INSTALL_PATH}" ] || { echo "Missing install path for asdf install" >&2; exit 1; }
+
+if [ "${INSTALL_TYPE}" != "version" ]; then
+  echo "Unsupported install type: ${INSTALL_TYPE}" >&2
+  exit 1
+fi
+
+PACKAGE_DIR="$(find "${DOWNLOAD_PATH}" -maxdepth 1 -type d -name "opsd_${VERSION}_*" | head -n 1)"
+[ -n "${PACKAGE_DIR}" ] || { echo "Unpacked opsd bundle not found in ${DOWNLOAD_PATH}" >&2; exit 1; }
+
+mkdir -p "${INSTALL_PATH}"
+cp -R "${PACKAGE_DIR}/." "${INSTALL_PATH}/"
+chmod +x "${INSTALL_PATH}/bin/opsd"
