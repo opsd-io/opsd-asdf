@@ -3,6 +3,10 @@
 An [asdf](https://asdf-vm.com/) plugin for installing and managing the OPSd
 CLI from release bundles published by [`opsd-io/opsd-cli`](https://github.com/opsd-io/opsd-cli/releases).
 
+See the [central OPSd contribution guide](https://github.com/opsd-io/.github/blob/main/CONTRIBUTING.md)
+for plugin checks, release artifact expectations, and pull request
+conventions.
+
 ## What This Repository Contains
 
 This repository contains the asdf plugin contract:
