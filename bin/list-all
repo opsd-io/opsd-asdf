@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+REPO_URL="${OPSD_RELEASE_GIT_URL:-https://github.com/opsd-io/opsd-cli.git}"
+
+git -c versionsort.suffix=- ls-remote --sort='version:refname' --tags --refs "${REPO_URL}" 'refs/tags/v*' \
+  | awk -F/ '{print $NF}' \
+  | awk '$0 ~ /^v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$/ {sub(/^v/, ""); print}'

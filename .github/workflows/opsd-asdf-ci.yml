@@ -1,0 +1,86 @@
+name: ASDF plugin CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test ASDF plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Check shell script syntax
+        shell: bash
+        run: |
+          find bin -type f -print0 | xargs -0 -r -n1 sh -n
+
+      - name: Test version listing
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repo_dir="$(mktemp -d)"
+          trap 'rm -rf "${repo_dir}"' EXIT
+
+          git -C "${repo_dir}" init -q
+          git -C "${repo_dir}" config user.name "ASDF CI"
+          git -C "${repo_dir}" config user.email "asdf-ci@example.invalid"
+          touch "${repo_dir}/README.md"
+          git -C "${repo_dir}" add README.md
+          git -C "${repo_dir}" commit -q -m "test fixture"
+          git -C "${repo_dir}" tag v1.0.0
+          git -C "${repo_dir}" tag v1.2.0
+          git -C "${repo_dir}" tag v2.0.0-rc.1
+
+          versions="$(OPSD_RELEASE_GIT_URL="${repo_dir}" bin/list-all)"
+          test "${versions}" = $'1.0.0\n1.2.0'
+          test "$(OPSD_RELEASE_GIT_URL="${repo_dir}" bin/latest-stable)" = "1.2.0"
+
+      - name: Test installation from a local release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="0.0.0"
+          fixture_dir="$(mktemp -d)"
+          download_dir="$(mktemp -d)"
+          install_dir="$(mktemp -d)"
+          bundle_dir="${fixture_dir}/opsd_${version}_linux_amd64"
+          archive_path="${fixture_dir}/opsd_${version}_linux_amd64.tar.gz"
+
+          trap 'rm -rf "${fixture_dir}" "${download_dir}" "${install_dir}"' EXIT
+
+          mkdir -p "${bundle_dir}/bin"
+          cat > "${bundle_dir}/bin/opsd" <<'EOF'
+          #!/bin/sh
+          printf '%s\n' "opsd test bundle"
+          EOF
+          chmod +x "${bundle_dir}/bin/opsd"
+          tar -C "${fixture_dir}" -czf "${archive_path}" "opsd_${version}_linux_amd64"
+          (cd "${fixture_dir}" && sha256sum "$(basename "${archive_path}")") > "${fixture_dir}/checksums.txt"
+
+          ASDF_INSTALL_TYPE=version \
+          ASDF_INSTALL_VERSION="${version}" \
+          ASDF_DOWNLOAD_PATH="${download_dir}" \
+          OPSD_RELEASE_OS=linux \
+          OPSD_RELEASE_ARCH=amd64 \
+          OPSD_RELEASE_BASE_URL="file://${fixture_dir}" \
+            bin/download
+
+          ASDF_INSTALL_TYPE=version \
+          ASDF_INSTALL_VERSION="${version}" \
+          ASDF_DOWNLOAD_PATH="${download_dir}" \
+          ASDF_INSTALL_PATH="${install_dir}" \
+            bin/install
+
+          test -x "${install_dir}/bin/opsd"
+          "${install_dir}/bin/opsd" >/dev/null
